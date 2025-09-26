@@ -1,0 +1,140 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  firstName     String?
+  lastName      String?
+  phone         String?
+  licenseNumber String?
+  licenseState  String?
+  darkMode      Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  // Relations
+  vehicles      Vehicle[]
+  insurance     Insurance[]
+  trips         Trip[]
+  alerts        Alert[]
+  
+  @@map("users")
+}
+
+model Vehicle {
+  id           String  @id @default(cuid())
+  userId       String
+  make         String?
+  model        String?
+  year         String?
+  vin          String?
+  licensePlate String?
+  color        String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  // Relations
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trips        Trip[]
+  
+  @@map("vehicles")
+}
+
+model Insurance {
+  id             String   @id @default(cuid())
+  userId         String
+  provider       String?
+  policyNumber   String?
+  groupNumber    String?
+  effectiveDate  String?
+  expirationDate String?
+  coverageType   String?
+  deductible     String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  
+  // Relations
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("insurance")
+}
+
+model Trip {
+  id               String   @id @default(cuid())
+  userId           String
+  vehicleId        String?
+  tripId           String   @unique
+  startTime        DateTime
+  endTime          DateTime?
+  distance         Float    @default(0)
+  duration         Int      @default(0)
+  averageSpeed     Float    @default(0)
+  maxSpeed         Float    @default(0)
+  speedViolations  Int      @default(0)
+  hardBraking      Int      @default(0)
+  rapidAcceleration Int     @default(0)
+  safetyScore      Float    @default(100)
+  mapProvider      String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  
+  // Relations
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle          Vehicle?  @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  alerts           Alert[]
+  locationData     LocationData[]
+  
+  @@map("trips")
+}
+
+model LocationData {
+  id          String   @id @default(cuid())
+  tripId      String
+  latitude    Float
+  longitude   Float
+  speed       Float
+  speedLimit  Float
+  timestamp   DateTime @default(now())
+  
+  // Relations
+  trip        Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  
+  @@map("location_data")
+}
+
+model Alert {
+  id        String   @id @default(cuid())
+  userId    String
+  tripId    String?
+  type      String   // 'speed', 'success', 'info', 'warning'
+  message   String
+  timestamp DateTime @default(now())
+  isRead    Boolean  @default(false)
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trip      Trip?    @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  
+  @@map("alerts")
+}
+
+model InsuranceExport {
+  id             String   @id @default(cuid())
+  userId         String
+  tripId         String
+  exportData     Json
+  insuranceProvider String
+  exportedAt     DateTime @default(now())
+  status         String   @default("pending") // 'pending', 'sent', 'failed'
+  
+  @@map("insurance_exports")
+}
